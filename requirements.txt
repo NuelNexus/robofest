@@ -1,0 +1,6 @@
+pyserial
+opencv-python
+numpy
+matplotlib
+pillow
+google-generativeai

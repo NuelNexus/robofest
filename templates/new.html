@@ -1,0 +1,520 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot Navigation System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .card h2 {
+            color: #3498db;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .video-container {
+            grid-column: 1 / -1;
+            text-align: center;
+        }
+        
+        #videoFeed {
+            width: 100%;
+            max-width: 800px;
+            border-radius: 10px;
+            border: 3px solid #3498db;
+            background: #000;
+        }
+        
+        .control-panel {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .control-btn {
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            background: #3498db;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .control-btn:active {
+            transform: translateY(0);
+        }
+        
+        .control-btn.emergency {
+            background: #e74c3c;
+            grid-column: 1 / -1;
+        }
+        
+        .control-btn.forward {
+            grid-column: 2;
+            grid-row: 1;
+        }
+        
+        .control-btn.left {
+            grid-column: 1;
+            grid-row: 2;
+        }
+        
+        .control-btn.right {
+            grid-column: 3;
+            grid-row: 2;
+        }
+        
+        .control-btn.backward {
+            grid-column: 2;
+            grid-row: 3;
+        }
+        
+        .control-btn.stop {
+            background: #f39c12;
+        }
+        
+        .control-btn.explore {
+            background: #2ecc71;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .status-item {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .status-label {
+            font-size: 12px;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        
+        .status-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .status-value.safe {
+            color: #27ae60;
+        }
+        
+        .status-value.warning {
+            color: #f39c12;
+        }
+        
+        .status-value.danger {
+            color: #e74c3c;
+        }
+        
+        .distance-display {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+        }
+        
+        .distance-item {
+            text-align: center;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            flex: 1;
+            margin: 0 5px;
+        }
+        
+        .distance-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .distance-label {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+        
+        .log-container {
+            max-height: 300px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        
+        .log-entry {
+            padding: 5px;
+            border-bottom: 1px solid #ddd;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .log-time {
+            color: #7f8c8d;
+        }
+        
+        .log-message {
+            color: #2c3e50;
+        }
+        
+        .alert {
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            display: none;
+        }
+        
+        .alert.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .control-panel {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 Advanced Robot Navigation System</h1>
+            <p class="subtitle">Distance-Aware Navigation with Path Tracking</p>
+        </header>
+        
+        <div class="dashboard">
+            <div class="card video-container">
+                <h2>📹 Live Camera Feed</h2>
+                <img id="videoFeed" src="{{ url_for('video_feed') }}">
+                <div class="distance-display" id="distanceDisplay">
+                    <!-- Distance info will be populated by JavaScript -->
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>🎮 Manual Control</h2>
+                <div id="alert" class="alert"></div>
+                <div class="control-panel">
+                    <button class="control-btn forward" onclick="sendCommand('forward')">↑ FORWARD</button>
+                    <button class="control-btn left" onclick="sendCommand('left')">← LEFT</button>
+                    <button class="control-btn stop" onclick="sendCommand('stop')">⏹ STOP</button>
+                    <button class="control-btn right" onclick="sendCommand('right')">→ RIGHT</button>
+                    <button class="control-btn backward" onclick="sendCommand('backward')">↓ BACKWARD</button>
+                    <button class="control-btn explore" onclick="startExploration()">🧭 EXPLORE</button>
+                    <button class="control-btn emergency" onclick="emergencyStop()">🛑 EMERGENCY STOP</button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>📊 System Status</h2>
+                <div class="status-grid" id="statusGrid">
+                    <!-- Status will be populated by JavaScript -->
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>📝 Navigation Log</h2>
+                <div class="log-container" id="logContainer">
+                    <!-- Logs will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let logEntries = [];
+        
+        function showAlert(message, type = 'success') {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = `alert ${type}`;
+            alert.style.display = 'block';
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 3000);
+        }
+        
+        function sendCommand(command) {
+            fetch('/api/control', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ command: command, duration: 1.0 })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert(`Command executed: ${command}`, 'success');
+                    addLog(`Manual control: ${command}`);
+                } else {
+                    showAlert(`Error: ${data.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                showAlert(`Network error: ${error}`, 'error');
+            });
+        }
+        
+        function startExploration() {
+            fetch('/api/explore', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('Autonomous exploration started!', 'success');
+                    addLog('Started autonomous exploration');
+                } else {
+                    showAlert(`Error: ${data.error}`, 'error');
+                }
+            });
+        }
+        
+        function emergencyStop() {
+            fetch('/api/emergency_stop', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('EMERGENCY STOP ACTIVATED', 'error');
+                    addLog('EMERGENCY STOP');
+                }
+            });
+        }
+        
+        function addLog(message) {
+            const time = new Date().toLocaleTimeString();
+            logEntries.unshift({ time, message });
+            
+            // Keep only last 10 entries
+            if (logEntries.length > 10) {
+                logEntries.pop();
+            }
+            
+            updateLogDisplay();
+        }
+        
+        function updateLogDisplay() {
+            const container = document.getElementById('logContainer');
+            container.innerHTML = logEntries.map(entry => `
+                <div class="log-entry">
+                    <span class="log-time">[${entry.time}]</span>
+                    <span class="log-message"> ${entry.message}</span>
+                </div>
+            `).join('');
+        }
+        
+        function updateStatus() {
+            fetch('/api/status')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updateStatusDisplay(data.data);
+                    updateDistanceDisplay(data.data);
+                }
+            });
+        }
+        
+        function updateStatusDisplay(status) {
+            const grid = document.getElementById('statusGrid');
+            
+            const items = [
+                { label: 'Robot State', value: status.navigation.state },
+                { label: 'Battery', value: `${status.battery}%`, 
+                  class: status.battery > 30 ? 'safe' : status.battery > 15 ? 'warning' : 'danger' },
+                { label: 'Camera', value: `${status.camera_type} (${status.camera_index})` },
+                { label: 'Connected', value: status.connected ? 'Yes' : 'No', 
+                  class: status.connected ? 'safe' : 'danger' },
+                { label: 'Visited Cells', value: status.navigation.visited_cells },
+                { label: 'Obstacles Avoided', value: status.obstacles_avoided || 0 },
+                { label: 'Position X', value: status.navigation.position[0].toFixed(1) },
+                { label: 'Position Y', value: status.navigation.position[1].toFixed(1) },
+                { label: 'Heading', value: `${status.navigation.heading.toFixed(0)}°` }
+            ];
+            
+            grid.innerHTML = items.map(item => `
+                <div class="status-item">
+                    <div class="status-label">${item.label}</div>
+                    <div class="status-value ${item.class || ''}">${item.value}</div>
+                </div>
+            `).join('');
+        }
+        
+        function updateDistanceDisplay(status) {
+            const display = document.getElementById('distanceDisplay');
+            
+            // Get snapshot for distance data
+            fetch('/api/snapshot')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.analysis) {
+                    const analysis = data.analysis;
+                    display.innerHTML = `
+                        <div class="distance-item">
+                            <div class="distance-value" style="color: ${analysis.left_distance > 20 ? '#27ae60' : '#e74c3c'}">
+                                ${analysis.left_distance.toFixed(1)}
+                            </div>
+                            <div class="distance-label">LEFT (cm)</div>
+                        </div>
+                        <div class="distance-item">
+                            <div class="distance-value" style="color: ${analysis.center_distance > 20 ? '#27ae60' : '#e74c3c'}">
+                                ${analysis.center_distance.toFixed(1)}
+                            </div>
+                            <div class="distance-label">CENTER (cm)</div>
+                        </div>
+                        <div class="distance-item">
+                            <div class="distance-value" style="color: ${analysis.right_distance > 20 ? '#27ae60' : '#e74c3c'}">
+                                ${analysis.right_distance.toFixed(1)}
+                            </div>
+                            <div class="distance-label">RIGHT (cm)</div>
+                        </div>
+                    `;
+                }
+            });
+        }
+        
+        // Connect on page load
+        window.addEventListener('load', () => {
+            fetch('/api/connect', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    addLog('Connected to robot system');
+                } else {
+                    addLog('Failed to connect to hardware (using simulation)');
+                }
+            });
+            
+            // Update status every 2 seconds
+            setInterval(updateStatus, 2000);
+            updateStatus();
+            
+            // Add initial log
+            addLog('System initialized');
+        });
+        
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                    sendCommand('forward');
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    sendCommand('left');
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    sendCommand('right');
+                    break;
+                case 'ArrowDown':
+                case 's':
+                case 'S':
+                    sendCommand('backward');
+                    break;
+                case ' ':
+                    sendCommand('stop');
+                    break;
+                case 'e':
+                case 'E':
+                    startExploration();
+                    break;
+                case 'Escape':
+                    emergencyStop();
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>

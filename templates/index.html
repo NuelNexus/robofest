@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot Control Panel</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div>
+                    <h1><i class="fas fa-robot"></i> Robot Control Panel</h1>
+                    <div class="tagline">Real-time monitoring and control interface</div>
+                </div>
+            </div>
+            <div class="connection-status">
+                <div class="status-indicator" id="connectionDot"></div>
+                <span id="connectionStatusText">Disconnected</span>
+            </div>
+        </header>
+
+        <div class="dashboard">
+            <!-- Left Panel -->
+            <div class="left-panel">
+                <!-- Camera Section -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <i class="fas fa-video"></i>
+                            <span>Live Camera Feed</span>
+                        </div>
+                        <div class="text-muted" id="cameraStatus">Connected</div>
+                    </div>
+                    <div class="camera-container">
+                        <img id="cameraFeed" src="{{ url_for('video_feed') }}" alt="Camera Feed">
+                        <div class="camera-overlay">
+                            <i class="fas fa-circle" style="color: #34c759; font-size: 8px;"></i>
+                            <span>LIVE</span>
+                            <span id="cameraInfoDisplay">640×480 @ 30fps</span>
+                        </div>
+                    </div>
+                    <div class="camera-controls">
+                        <button onclick="toggleStream()" id="streamBtn">
+                            <i class="fas fa-pause"></i> Pause
+                        </button>
+                        <button onclick="takeSnapshot()">
+                            <i class="fas fa-camera"></i> Capture
+                        </button>
+                        <button onclick="toggleFullscreen()">
+                            <i class="fas fa-expand"></i> Fullscreen
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Control Section -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <i class="fas fa-gamepad"></i>
+                            <span>Manual Control</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Speed Control -->
+                    <div class="speed-control">
+                        <label class="speed-label">
+                            Speed Control
+                            <span class="speed-value" id="speedValue">150</span>
+                        </label>
+                        <input type="range" id="speedSlider" min="0" max="255" value="150" 
+                               oninput="updateSpeed(this.value)">
+                    </div>
+
+                    <!-- Movement Grid -->
+                    <div class="movement-grid">
+                        <button class="movement-btn forward" onclick="sendCommand('forward')">
+                            <i class="fas fa-arrow-up"></i>
+                            <span>Forward</span>
+                        </button>
+                        <button class="movement-btn left" onclick="sendCommand('left')">
+                            <i class="fas fa-arrow-left"></i>
+                            <span>Left</span>
+                        </button>
+                        <button class="movement-btn smooth-left" onclick="sendCommand('smooth_left')">
+                            <i class="fas fa-undo"></i>
+                            <span>Turn Left</span>
+                        </button>
+                        <button class="movement-btn backward" onclick="sendCommand('backward')">
+                            <i class="fas fa-arrow-down"></i>
+                            <span>Backward</span>
+                        </button>
+                        <button class="stop-btn" onclick="sendCommand('stop')">
+                            <i class="fas fa-stop"></i>
+                            <span>Emergency Stop</span>
+                        </button>
+                        <button class="movement-btn smooth-right" onclick="sendCommand('smooth_right')">
+                            <i class="fas fa-redo"></i>
+                            <span>Turn Right</span>
+                        </button>
+                        <div></div> <!-- Empty cell for grid alignment -->
+                        <button class="movement-btn right" onclick="sendCommand('right')">
+                            <i class="fas fa-arrow-right"></i>
+                            <span>Right</span>
+                        </button>
+                    </div>
+
+                    <!-- Connection Controls -->
+                    <div class="connection-controls">
+                        <button onclick="connectRobot()" id="connectBtn" class="btn-connect">
+                            <i class="fas fa-link"></i>
+                            <span>Connect Robot</span>
+                        </button>
+                        <button onclick="disconnectRobot()" class="btn-disconnect">
+                            <i class="fas fa-unlink"></i>
+                            <span>Disconnect</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel -->
+            <div class="right-panel">
+                <!-- Status Cards -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Robot Status</span>
+                        </div>
+                        <button onclick="updateStatus()" class="text-muted" style="background:none;border:none;cursor:pointer">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div class="status-grid">
+                        <div class="status-card">
+                            <span class="status-label">Position</span>
+                            <span class="status-value" id="robotPosition">0.00, 0.00</span>
+                        </div>
+                        <div class="status-card">
+                            <span class="status-label">Heading</span>
+                            <span class="status-value" id="robotHeading">0°</span>
+                        </div>
+                        <div class="status-card warning">
+                            <span class="status-label">Battery</span>
+                            <div class="battery-container">
+                                <div class="battery-level">
+                                    <div id="batteryLevel"></div>
+                                </div>
+                                <span class="status-value" id="batteryPercent">100%</span>
+                            </div>
+                        </div>
+                        <div class="status-card">
+                            <span class="status-label">Current Speed</span>
+                            <span class="status-value" id="currentSpeed">150</span>
+                        </div>
+                        <div class="status-card">
+                            <span class="status-label">Last Command</span>
+                            <span class="status-value" id="lastCommand">None</span>
+                        </div>
+                        <div class="status-card danger">
+                            <span class="status-label">Obstacles Detected</span>
+                            <span class="status-value" id="obstaclesCount">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Navigation -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <i class="fas fa-brain"></i>
+                            <span>AI Navigation</span>
+                        </div>
+                    </div>
+                    <div class="ai-input-group">
+                        <input type="text" id="navigationTarget" 
+                               placeholder="Where should the robot go?">
+                        <button onclick="navigateToTarget()" class="btn-navigate">
+                            <i class="fas fa-directions"></i>
+                        </button>
+                    </div>
+                    <button onclick="exploreRoom()" class="btn-explore">
+                        <i class="fas fa-compass"></i>
+                        <span>Autonomous Exploration</span>
+                    </button>
+                    <div class="ai-response-box" id="aiResponse">
+                        Ready for navigation commands. Describe a location or use autonomous exploration.
+                    </div>
+                </div>
+
+                <!-- Map Display -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <i class="fas fa-map-marked-alt"></i>
+                            <span>Exploration Map</span>
+                        </div>
+                        <button onclick="updateMap()" class="text-muted" style="background:none;border:none;cursor:pointer">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div class="map-container">
+                        <img id="mapImage" src="" alt="Map will appear here">
+                        <div class="map-overlay">
+                            <span>Position: <strong id="mapPosition">0,0</strong></span>
+                            <span>Heading: <strong id="mapHeading">0°</strong></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Information -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <i class="fas fa-info-circle"></i>
+                            <span>System Information</span>
+                        </div>
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">Movements Recorded</span>
+                            <span class="info-value" id="movementsCount">0</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Camera Resolution</span>
+                            <span class="info-value" id="cameraInfo">640×480</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Arduino Port</span>
+                            <span class="info-value" id="arduinoPort">COM3</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Map Dimensions</span>
+                            <span class="info-value" id="mapSize">100×100</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Movement Log -->
+        <div class="card" style="margin: 0 25px 25px; border-top: 3px solid var(--accent);">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-history"></i>
+                    <span>Movement Log</span>
+                </div>
+                <button onclick="clearLog()" class="text-muted" style="background:none;border:none;cursor:pointer;font-size:13px">
+                    <i class="fas fa-trash-alt"></i> Clear
+                </button>
+            </div>
+            <div class="log-container">
+                <table id="movementLog">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Command</th>
+                            <th>Position</th>
+                            <th>Heading</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logBody">
+                        <!-- Log entries will appear here -->
+                        <tr>
+                            <td colspan="5" class="text-center text-muted" style="padding: 40px;">
+                                No movements recorded yet
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Snapshot Modal -->
+    <div id="snapshotModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-image"></i> Image Analysis</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div>
+                    <img id="snapshotImage" src="" alt="Snapshot" style="width:100%;border-radius:8px;">
+                </div>
+                <div>
+                    <h3 style="margin-bottom:16px;color:var(--primary);">Analysis Results</h3>
+                    <div id="analysisResult">
+                        <!-- Analysis will appear here -->
+                    </div>
+                    <div style="margin-top:20px;padding:16px;background:#f8f9fa;border-radius:8px;">
+                        <div style="font-size:13px;color:var(--gray);margin-bottom:8px;">Navigation Advice</div>
+                        <div id="navigationAdvice" style="font-size:14px;">
+                            Processing image analysis...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
