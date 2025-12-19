@@ -3,7 +3,7 @@ import math
 
 class Config:
     # Arduino Serial Configuration
-    ARDUINO_PORT = 'COM11'  # Change to your port (e.g., '/dev/ttyUSB0' for Linux)
+    ARDUINO_PORT = 'COM15'  # COM changes on the raspberry pi(e.g., '/dev/ttyUSB0' for Linux)
     ARDUINO_BAUD = 9600
     
     # Motor Pins Configuration (Update with your actual pin mappings)
@@ -22,7 +22,7 @@ class Config:
     # Camera Configuration
     CAMERA_ID = 0  # Try 0, 1, or -1 for default camera
     RESOLUTION = (640, 480)
-    FRAME_RATE = 15  # Reduced for stability
+    FRAME_RATE = 30  # Reduced for stability
     
     # Camera backend override for Windows (try different ones)
     CAMERA_BACKEND = 'DIRECTSHOW'  # Options: 'MSMF', 'DIRECTSHOW', 'ANY'
