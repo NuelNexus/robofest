@@ -1,0 +1,433 @@
+/*
+ * Raspberry Pi Robot - Complete Sensor Controller
+ * For Arduino Uno/Nano/Mega with MQ135 and pH sensors
+ * Baud Rate: 115200
+ */
+
+#include <DHT.h>
+
+// ===== PIN DEFINITIONS =====
+#define DHTPIN 2           // DHT11/22 Temperature & Humidity
+#define DHTTYPE DHT22      // Use DHT22 for better accuracy
+
+#define TRIG_PIN 3         // Ultrasonic Sensor Trigger
+#define ECHO_PIN 4         // Ultrasonic Sensor Echo
+
+#define SOIL_MOISTURE_PIN A0  // Soil Moisture Sensor
+#define PH_SENSOR_PIN A1      // pH Sensor
+#define MQ135_PIN A2          // MQ135 Gas/Air Quality Sensor
+#define LIGHT_SENSOR_PIN A3   // Light Sensor
+
+// ===== CALIBRATION VALUES =====
+// pH sensor calibration (adjust based on your sensor)
+#define PH_OFFSET 0.0         // Calibration offset
+#define PH_SLOPE 1.0          // Calibration slope
+
+// MQ135 calibration for different gases (in ppm)
+#define MQ135_R0 10.0         // Sensor resistance in clean air
+#define MQ135_RL 10.0         // Load resistance
+
+// Soil moisture calibration (adjust for your sensor)
+#define SOIL_DRY 1023         // Value in dry air
+#define SOIL_WET 200          // Value in water
+
+// ===== SENSOR OBJECTS =====
+DHT dht(DHTPIN, DHTTYPE);
+
+void setup() {
+  Serial.begin(115200);
+  delay(2000);  // Wait for serial and sensors to stabilize
+  
+  Serial.println("RASPBERRY PI ROBOT - SENSOR SYSTEM");
+  Serial.println("===================================");
+  
+  // Initialize DHT Sensor
+  dht.begin();
+  
+  // Initialize Ultrasonic Sensor
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+  
+  // Initialize analog pins
+  pinMode(SOIL_MOISTURE_PIN, INPUT);
+  pinMode(PH_SENSOR_PIN, INPUT);
+  pinMode(MQ135_PIN, INPUT);
+  pinMode(LIGHT_SENSOR_PIN, INPUT);
+  
+  Serial.println("All sensors initialized");
+  Serial.println("Ready for commands:");
+  Serial.println("  GET_TEMP, GET_HUMIDITY, GET_DISTANCE");
+  Serial.println("  GET_SOIL, GET_PH, GET_GAS, GET_LIGHT");
+  Serial.println("  GET_ALL, GET_STATUS");
+  Serial.println("===================================\n");
+}
+
+void loop() {
+  if (Serial.available() > 0) {
+    String command = Serial.readStringUntil('\n');
+    command.trim();
+    command.toUpperCase();
+    
+    handleCommand(command);
+  }
+  
+  // Optional: Auto-send data every 10 seconds
+  static unsigned long lastSend = 0;
+  if (millis() - lastSend > 10000) {
+    // getAllSensors();
+    lastSend = millis();
+  }
+}
+
+void handleCommand(String cmd) {
+  if (cmd == "GET_TEMP") {
+    getTemperature();
+  }
+  else if (cmd == "GET_HUMIDITY") {
+    getHumidity();
+  }
+  else if (cmd == "GET_DISTANCE") {
+    getDistance();
+  }
+  else if (cmd == "GET_SOIL") {
+    getSoilMoisture();
+  }
+  else if (cmd == "GET_PH") {
+    getPH();
+  }
+  else if (cmd == "GET_GAS") {
+    getGasLevel();
+  }
+  else if (cmd == "GET_LIGHT") {
+    getLightLevel();
+  }
+  else if (cmd == "GET_ALL") {
+    getAllSensors();
+  }
+  else if (cmd == "GET_STATUS") {
+    getStatus();
+  }
+  else if (cmd == "CALIBRATE_PH") {
+    calibratePH();
+  }
+  else {
+    Serial.println("ERROR: Unknown command");
+  }
+}
+
+// ===== SENSOR FUNCTIONS =====
+
+void getTemperature() {
+  float temp = dht.readTemperature();
+  if (isnan(temp)) {
+    Serial.println("ERROR: Temperature sensor read failed");
+  } else {
+    Serial.print("Temperature: ");
+    Serial.print(temp);
+    Serial.println("°C");
+  }
+}
+
+void getHumidity() {
+  float humidity = dht.readHumidity();
+  if (isnan(humidity)) {
+    Serial.println("ERROR: Humidity sensor read failed");
+  } else {
+    Serial.print("Humidity: ");
+    Serial.print(humidity);
+    Serial.println("%");
+  }
+}
+
+void getDistance() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  
+  long duration = pulseIn(ECHO_PIN, HIGH, 30000);
+  float distance = duration * 0.034 / 2;
+  
+  if (distance <= 0 || distance > 400) {
+    Serial.println("ERROR: Distance out of range");
+  } else {
+    Serial.print("Distance: ");
+    Serial.print(distance);
+    Serial.println("cm");
+  }
+}
+
+void getSoilMoisture() {
+  int rawValue = analogRead(SOIL_MOISTURE_PIN);
+  
+  // Convert to percentage
+  int moisture = map(rawValue, SOIL_DRY, SOIL_WET, 0, 100);
+  moisture = constrain(moisture, 0, 100);
+  
+  // Categorize soil moisture
+  String category;
+  if (moisture < 20) category = "Very Dry";
+  else if (moisture < 40) category = "Dry";
+  else if (moisture < 60) category = "Optimal";
+  else if (moisture < 80) category = "Moist";
+  else category = "Waterlogged";
+  
+  Serial.print("Soil Moisture: ");
+  Serial.print(moisture);
+  Serial.print("% (");
+  Serial.print(category);
+  Serial.print(") Raw: ");
+  Serial.println(rawValue);
+}
+
+void getPH() {
+  int rawValue = analogRead(PH_SENSOR_PIN);
+  float voltage = rawValue * (5.0 / 1023.0);
+  
+  // Convert voltage to pH (calibration needed)
+  // pH = 7 + ((2.5 - voltage) / 0.18) for standard pH electrode
+  float phValue = 7.0 + ((2.5 - voltage) / 0.18) + PH_OFFSET;
+  phValue = constrain(phValue, 0, 14);
+  
+  // Categorize pH
+  String category;
+  if (phValue < 5.5) category = "Very Acidic";
+  else if (phValue < 6.5) category = "Slightly Acidic";
+  else if (phValue < 7.5) category = "Neutral";
+  else if (phValue < 8.5) category = "Alkaline";
+  else category = "Very Alkaline";
+  
+  Serial.print("pH Level: ");
+  Serial.print(phValue, 2);
+  Serial.print(" (");
+  Serial.print(category);
+  Serial.print(") Voltage: ");
+  Serial.print(voltage, 3);
+  Serial.println("V");
+}
+
+void getGasLevel() {
+  int rawValue = analogRead(MQ135_PIN);
+  float voltage = rawValue * (5.0 / 1023.0);
+  
+  // Calculate sensor resistance
+  float rs = ((5.0 - voltage) / voltage) * MQ135_RL;
+  
+  // Calculate ratio (simplified)
+  float ratio = rs / MQ135_R0;
+  
+  // Estimate ppm (simplified - needs proper calibration curves)
+  // For MQ135: CO2, NH3, NOx, Alcohol, Benzene, Smoke
+  float co2_ppm = 116.6020682 * pow(ratio, -2.769034857);
+  float nh3_ppm = 102.694 * pow(ratio, -2.48818);
+  
+  // Use CO2 as primary reading
+  float gas_ppm = co2_ppm;
+  
+  // Categorize air quality
+  String quality;
+  if (gas_ppm < 400) quality = "Excellent";
+  else if (gas_ppm < 600) quality = "Good";
+  else if (gas_ppm < 1000) quality = "Fair";
+  else if (gas_ppm < 2000) quality = "Poor";
+  else quality = "Hazardous";
+  
+  Serial.print("Gas Level: ");
+  Serial.print(gas_ppm, 0);
+  Serial.print("ppm (");
+  Serial.print(quality);
+  Serial.print(") CO2: ");
+  Serial.print(co2_ppm, 0);
+  Serial.print("ppm NH3: ");
+  Serial.print(nh3_ppm, 0);
+  Serial.println("ppm");
+}
+
+void getLightLevel() {
+  int rawValue = analogRead(LIGHT_SENSOR_PIN);
+  
+  // Convert to percentage and lux (approximate)
+  int percent = map(rawValue, 0, 1023, 0, 100);
+  float lux = rawValue * 0.976;  // Approximate conversion
+  
+  // Categorize light level
+  String category;
+  if (percent < 20) category = "Very Dark";
+  else if (percent < 40) category = "Dark";
+  else if (percent < 60) category = "Moderate";
+  else if (percent < 80) category = "Bright";
+  else category = "Very Bright";
+  
+  Serial.print("Light Level: ");
+  Serial.print(percent);
+  Serial.print("% (");
+  Serial.print(category);
+  Serial.print(") Lux: ");
+  Serial.print(lux, 0);
+  Serial.print(" Raw: ");
+  Serial.println(rawValue);
+}
+
+void getAllSensors() {
+  Serial.println("=== COMPLETE SENSOR READINGS ===");
+  Serial.println("Timestamp: " + String(millis() / 1000) + "s");
+  
+  // Temperature
+  float temp = dht.readTemperature();
+  Serial.print("Temperature: ");
+  Serial.println(isnan(temp) ? "N/A" : String(temp) + "°C");
+  
+  // Humidity
+  float hum = dht.readHumidity();
+  Serial.print("Humidity: ");
+  Serial.println(isnan(hum) ? "N/A" : String(hum) + "%");
+  
+  // Distance
+  float distance = readDistance();
+  Serial.print("Distance: ");
+  if (distance <= 0 || distance > 400) {
+    Serial.println("N/A");
+  } else {
+    Serial.println(String(distance) + "cm");
+  }
+  
+  // Soil Moisture
+  int soilRaw = analogRead(SOIL_MOISTURE_PIN);
+  int soilPercent = map(soilRaw, SOIL_DRY, SOIL_WET, 0, 100);
+  soilPercent = constrain(soilPercent, 0, 100);
+  Serial.print("Soil Moisture: ");
+  Serial.print(soilPercent);
+  Serial.print("% Raw: ");
+  Serial.println(soilRaw);
+  
+  // pH Level
+  int phRaw = analogRead(PH_SENSOR_PIN);
+  float phVoltage = phRaw * (5.0 / 1023.0);
+  float phValue = 7.0 + ((2.5 - phVoltage) / 0.18) + PH_OFFSET;
+  phValue = constrain(phValue, 0, 14);
+  Serial.print("pH Level: ");
+  Serial.print(phValue, 2);
+  Serial.print(" Voltage: ");
+  Serial.print(phVoltage, 3);
+  Serial.println("V");
+  
+  // Gas Level
+  int gasRaw = analogRead(MQ135_PIN);
+  float gasVoltage = gasRaw * (5.0 / 1023.0);
+  float rs = ((5.0 - gasVoltage) / gasVoltage) * MQ135_RL;
+  float ratio = rs / MQ135_R0;
+  float co2_ppm = 116.6020682 * pow(ratio, -2.769034857);
+  Serial.print("Gas Level: ");
+  Serial.print(co2_ppm, 0);
+  Serial.print("ppm Raw: ");
+  Serial.println(gasRaw);
+  
+  // Light Level
+  int lightRaw = analogRead(LIGHT_SENSOR_PIN);
+  int lightPercent = map(lightRaw, 0, 1023, 0, 100);
+  Serial.print("Light Level: ");
+  Serial.print(lightPercent);
+  Serial.print("% Raw: ");
+  Serial.println(lightRaw);
+  
+  Serial.println("================================\n");
+}
+
+float readDistance() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  
+  long duration = pulseIn(ECHO_PIN, HIGH, 30000);
+  return duration * 0.034 / 2;
+}
+
+void getStatus() {
+  Serial.println("=== SYSTEM STATUS ===");
+  
+  // Test DHT
+  float temp = dht.readTemperature();
+  float hum = dht.readHumidity();
+  Serial.print("DHT Sensor: ");
+  Serial.println((!isnan(temp) && !isnan(hum)) ? "OK" : "ERROR");
+  
+  // Test Ultrasonic
+  float distance = readDistance();
+  Serial.print("Ultrasonic: ");
+  Serial.println((distance > 0 && distance < 400) ? "OK" : "WARNING");
+  
+  // Test Soil Moisture
+  int soilValue = analogRead(SOIL_MOISTURE_PIN);
+  Serial.print("Soil Sensor: ");
+  Serial.println((soilValue >= 0 && soilValue <= 1023) ? "OK" : "ERROR");
+  
+  // Test pH Sensor
+  int phValue = analogRead(PH_SENSOR_PIN);
+  Serial.print("pH Sensor: ");
+  Serial.println((phValue >= 0 && phValue <= 1023) ? "OK" : "ERROR");
+  
+  // Test Gas Sensor
+  int gasValue = analogRead(MQ135_PIN);
+  Serial.print("Gas Sensor: ");
+  Serial.println((gasValue >= 0 && gasValue <= 1023) ? "OK" : "ERROR");
+  
+  // Test Light Sensor
+  int lightValue = analogRead(LIGHT_SENSOR_PIN);
+  Serial.print("Light Sensor: ");
+  Serial.println((lightValue >= 0 && lightValue <= 1023) ? "OK" : "ERROR");
+  
+  Serial.println("Overall: OPERATIONAL");
+  Serial.println("====================\n");
+}
+
+void calibratePH() {
+  Serial.println("=== pH CALIBRATION ===");
+  Serial.println("Place sensor in pH 7.0 solution and press any key...");
+  while (!Serial.available()) delay(100);
+  Serial.read();  // Clear buffer
+  
+  int raw7 = analogRead(PH_SENSOR_PIN);
+  float voltage7 = raw7 * (5.0 / 1023.0);
+  Serial.print("pH 7.0 Reading: ");
+  Serial.print(raw7);
+  Serial.print(" (");
+  Serial.print(voltage7, 3);
+  Serial.println("V)");
+  
+  Serial.println("\nPlace sensor in pH 4.0 solution and press any key...");
+  while (!Serial.available()) delay(100);
+  Serial.read();  // Clear buffer
+  
+  int raw4 = analogRead(PH_SENSOR_PIN);
+  float voltage4 = raw4 * (5.0 / 1023.0);
+  Serial.print("pH 4.0 Reading: ");
+  Serial.print(raw4);
+  Serial.print(" (");
+  Serial.print(voltage4, 3);
+  Serial.println("V)");
+  
+  // Calculate calibration values
+  // pH = slope * voltage + offset
+  // For 7.0 and 4.0 buffers:
+  // 7.0 = slope * voltage7 + offset
+  // 4.0 = slope * voltage4 + offset
+  
+  float slope = 3.0 / (voltage7 - voltage4);  // pH difference is 3.0
+  float offset = 7.0 - (slope * voltage7);
+  
+  Serial.println("\nCalculated calibration values:");
+  Serial.print("Slope: ");
+  Serial.println(slope, 4);
+  Serial.print("Offset: ");
+  Serial.println(offset, 4);
+  
+  Serial.println("\nUpdate these values in the code:");
+  Serial.println("#define PH_OFFSET " + String(offset, 4));
+  Serial.println("#define PH_SLOPE " + String(slope, 4));
+  
+  Serial.println("Calibration complete!");
+  Serial.println("=====================\n");
+}
